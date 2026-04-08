@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package ovsmonitor;
+
+// NIC statistics
+message NicStats {
+  string iface = 1;
+  double rx_mbps = 2;
+  double tx_mbps = 3;
+  uint64 rx_pkts = 4;
+  uint64 tx_pkts = 5;
+  uint64 rx_drops = 6;
+  uint64 tx_drops = 7;
+  uint64 rx_errs = 8;
+  uint64 tx_errs = 9;
+}
+
+// Namespace statistics
+message NamespaceStats {
+  string name = 1;
+  double cpu_kernel = 2;
+  double cpu_user = 3;
+  double cpu_total = 4;
+  double ram_percent = 5;
+}
+
+// Global system
+message GlobalStats {
+  double cpu_total = 1;
+  double ram_used_gb = 2;
+  double ram_total_gb = 3;
+  double ram_percent = 4;
+  string hostname = 5;
+}
+
+// Complete metrics snapshot
+message OvsMetrics {
+  repeated NamespaceStats namespaces = 1;
+  repeated NicStats nics = 2;
+  GlobalStats global_stats = 3;
+}
+
+// Per-slice resource limit (tc-based, without touching OVS)
+message SliceResourceLimit {
+  string slice_id = 1;          // e.g. "ovs-1" -> maps to veth-phy1
+  double nic_tx_limit_mbps = 2; // egress limit on veth-phyX
+  double nic_rx_limit_mbps = 3; // ingress limit on veth-phyX
+  uint64 pkt_rate_limit = 4;    // packets/sec (indirect CPU control)
+  double cpu_percent_limit = 5; // CPU limit in % (indirectly via tc)
+}
+
+// Request for setting/deleting limit on a single slice (live, without interruption)
+enum LimitAction {
+  SET = 0;      // set or update limit
+  DELETE = 1;   // delete limit (remove tc qdisc)
+  GET = 2;      // return current limit
+}
+
+message SetSliceLimitRequest {
+  string slice_id = 1;              // e.g. "ovs-1"
+  LimitAction action = 2;           // SET, DELETE, GET
+  double cpu_percent_limit = 3;     // CPU % limit (converted to bandwidth)
+  double nic_tx_limit_mbps = 4;     // direct TX limit
+  double nic_rx_limit_mbps = 5;     // direct RX limit
+  uint64 pkt_rate_limit = 6;        // packet rate limit
+  double cpu_coefficient = 7;       // CPU-throughput coefficient (CPU% per Mbps)
+}
+
+message SetSliceLimitResponse {
+  bool success = 1;
+  string message = 2;
+  SliceResourceLimit current_limit = 3;  // currently active limit
+}
+
+// Request for metrics or resource limits
+message OvsRequest {
+  double cpu_limit_percent = 1; // e.g. 50.0 (global, userspace)
+  double ram_limit_percent = 2; // e.g. 80.0 (global, userspace)
+  string nic_iface = 3;         // e.g. "ens19" (uplink)
+  double nic_tx_limit_mbps = 4; // e.g. 100.0 (uplink)
+  double nic_rx_limit_mbps = 5; // e.g. 100.0 (uplink)
+  repeated SliceResourceLimit slice_limits = 6; // per-slice tc limits
+}
+
+// Server response
+message OvsResponse {
+  OvsMetrics metrics = 1;
+  string status = 2; // "OK", "LIMIT_APPLIED", "ERROR"
+}
+
+// Service
+service OvsMonitor {
+  rpc GetMetrics(OvsRequest) returns (OvsResponse);
+  // Live limit setting without traffic interruption
+  rpc SetSliceLimit(SetSliceLimitRequest) returns (SetSliceLimitResponse);
+}

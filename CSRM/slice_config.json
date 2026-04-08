@@ -1,0 +1,16 @@
+{
+    "slices": {
+        "ovs-1": {
+            "veth": "veth-phy1",
+            "ips": ["192.168.101.10"],
+            "description": "OVS slice 1"
+        },
+        "ovs-2": {
+            "veth": "veth-phy2",
+            "ips": ["192.168.102.10"],
+            "description": "OVS slice 2"
+        }
+    },
+    "uplink": "ens19",
+    "bridge": "br-phy"
+}
