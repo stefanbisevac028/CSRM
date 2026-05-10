@@ -28,7 +28,10 @@ csrm-repo/
 │   ├── slice_config.json   # Slice configuration
 │   └── README.md           # Control plane documentation
 │
-└── README.md               # This file
+├── measurement/                  # Measurement
+│   ├── pid_sensitivity           # PID sensitivity measured data
+|   ├── scenario-measurements     # scenario data
+└── README.md                     # This file
 ```
 
 ## Quick Start
